@@ -238,7 +238,7 @@ struct ChatView: View {
             let cleaned = postProcess(response.content, userText: userText)
 
             if isSimilarToLast(cleaned) {
-                appendFallback(pattern: sensorResult.pattern)
+                appendFallback(pattern: sensorResult.pattern, userText: userText)
                 return
             }
             lastAIResponse = cleaned
@@ -254,7 +254,7 @@ struct ChatView: View {
                 state.addInsight(userQuote: userText, characterQuote: cleaned)
             }
         } catch {
-            appendFallback(pattern: sensorResult.pattern)
+            appendFallback(pattern: sensorResult.pattern, userText: userText)
         }
     }
 
@@ -263,14 +263,24 @@ struct ChatView: View {
         let a = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let b = lastAIResponse.trimmingCharacters(in: .whitespacesAndNewlines)
         if a == b { return true }
-        // 先頭20文字が一致 → 実質同じ応答とみなす
-        let prefixLen = min(20, min(a.count, b.count))
-        if prefixLen >= 10, a.prefix(prefixLen) == b.prefix(prefixLen) { return true }
+        // 先頭30文字が一致 → 実質同じ応答とみなす（20だと短すぎて誤検知）
+        let prefixLen = min(30, min(a.count, b.count))
+        if prefixLen >= 15, a.prefix(prefixLen) == b.prefix(prefixLen) { return true }
         return false
     }
 
     private func postProcess(_ text: String, userText: String) -> String {
-        deduplicated(removeEcho(text, userMessage: userText))
+        let processed = deduplicated(removeEcho(text, userMessage: userText))
+        return truncateToReasonableLength(processed)
+    }
+
+    // 長すぎる応答を最初の2文に切り詰める
+    private func truncateToReasonableLength(_ text: String) -> String {
+        let sentences = text.components(separatedBy: CharacterSet(charactersIn: "。！？!?\n"))
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard sentences.count > 3 else { return text }
+        return sentences.prefix(2).joined(separator: "。") + "。"
     }
 
     private func removeEcho(_ text: String, userMessage: String) -> String {
@@ -297,23 +307,43 @@ struct ChatView: View {
         return text
     }
 
-    private func appendFallback(pattern: SensorPattern) {
+    private let negativeKeywords = ["嫌", "つらい", "しんどい", "怖い", "悲しい", "苦しい", "ダメ", "無理", "消えたい", "死"]
+
+    private func appendFallback(pattern: SensorPattern, userText: String = "") {
+        let isNegative = negativeKeywords.contains { userText.contains($0) }
         let response: String
-        switch pattern {
-        case .factVsAssumption:
-            let opts = SensorResponseTemplates.reception(pattern: .factVsAssumption, character: state.selectedCharacter, type: .empathy)
-            response = opts
-        case .taskOverload:
-            response = SensorResponseTemplates.reception(pattern: .taskOverload, character: state.selectedCharacter, type: .appreciation)
-        case .none:
-            fallbackIndex += 1
-            let opts: [String]
+
+        if isNegative {
             switch state.selectedCharacter {
-            case .master: opts = ["なるほどな。", "そっか。", "うん。", "ふむ。"]
-            case .senpai: opts = ["そっか。", "ふむ。", "まあな。", "うん。"]
-            case .friend: opts = ["そっかー。", "うんうん。", "なるほど！", "へえ。"]
+            case .master:
+                fallbackIndex += 1
+                let opts = ["そうか、それはしんどいな。", "それは…きつかったな。", "うん、聞いてるよ。"]
+                response = opts[fallbackIndex % opts.count]
+            case .senpai:
+                fallbackIndex += 1
+                let opts = ["そっか、それはしんどかったな。", "まあ、つらかったよな。", "うん、そうか。"]
+                response = opts[fallbackIndex % opts.count]
+            case .friend:
+                fallbackIndex += 1
+                let opts = ["え、それしんどいじゃん。", "それはつらいよ。", "うん、話して。"]
+                response = opts[fallbackIndex % opts.count]
             }
-            response = opts[fallbackIndex % opts.count]
+        } else {
+            switch pattern {
+            case .factVsAssumption:
+                response = SensorResponseTemplates.reception(pattern: .factVsAssumption, character: state.selectedCharacter, type: .empathy)
+            case .taskOverload:
+                response = SensorResponseTemplates.reception(pattern: .taskOverload, character: state.selectedCharacter, type: .appreciation)
+            case .none:
+                fallbackIndex += 1
+                let opts: [String]
+                switch state.selectedCharacter {
+                case .master: opts = ["なるほどな。", "そっか。", "ふむ。", "そういうことか。"]
+                case .senpai: opts = ["そっか。", "ふむ。", "まあな。", "そういうことか。"]
+                case .friend: opts = ["そっかー。", "うんうん。", "なるほど！", "へえ。"]
+                }
+                response = opts[fallbackIndex % opts.count]
+            }
         }
         state.currentMessages.append(ChatMessage(sender: .character, text: response))
     }
