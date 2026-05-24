@@ -1,0 +1,25 @@
+name: KokorotobenchiApp
+options:
+  bundleIdPrefix: com.junayama.kokorotobench
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.5"
+
+targets:
+  KokorotobenchiApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: KokorotobenchiApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.junayama.kokorotobench
+        INFOPLIST_FILE: KokorotobenchiApp/Info.plist
+        SWIFT_VERSION: 5.0
+        TARGETED_DEVICE_FAMILY: "1,2"
+        DEVELOPMENT_TEAM: 76PR2AGFKG
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - framework: FoundationModels.framework
+        embed: false
