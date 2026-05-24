@@ -10,46 +10,40 @@ struct SensorPromptRequest {
 }
 
 enum EngagementMode {
-    case dialogue   // 問いかけ可
-    case monologue  // 問いかけ保留
+    case dialogue
+    case monologue
 }
 
 struct SensorPromptBuilder {
     static func build(for request: SensorPromptRequest, character: CharacterType) -> (system: String, user: String) {
-        let system = buildSystemPrompt(character: character, pattern: request.preSensorResult)
-        let user = buildUserPrompt(request: request)
-        return (system, user)
+        (buildSystemPrompt(character: character), request.utterance)
     }
 
-    private static func buildSystemPrompt(character: CharacterType, pattern: SensorPattern) -> String {
-        """
-        \(characterPersona(character))
-
-        【重要】あなたはキャラクターとしてユーザーに話しかけています。ユーザーの代わりに話したり、ユーザーの気持ちを代弁するのではありません。
-        - 必ず1〜2文で返す。長くならない
-        - アドバイスや解決策を出さない。まず相手の気持ちを受け止める
-        - 同じ言葉・同じ問いかけを繰り返さない
-        - 「大丈夫だよ」「そんなことはないよ」は使わない
-        - 感情的な発言には短く温かく受け止める
-        """
-    }
-
-    private static func buildUserPrompt(request: SensorPromptRequest) -> String {
-        var prompt = request.utterance
-        if request.engagementMode == .monologue {
-            prompt += "\n（注：短い独り言のような発話です。深掘りより受容を優先してください）"
-        }
-        return prompt
-    }
-
-    private static func characterPersona(_ character: CharacterType) -> String {
+    // シンプルで直接的なキャラクター別プロンプト
+    // 小モデルは複雑な指示を無視するため、最小限に絞る
+    static func buildSystemPrompt(character: CharacterType) -> String {
         switch character {
         case .master:
-            return "あなたはバーのマスターです。落ち着いた大人の口調で、言葉少なく、でも一言が刺さるような返し方をします。「〜だな」「〜じゃないか」のような語尾を使います。"
+            return """
+            あなたはバーのマスターです。カウンター越しに客の話を静かに聞く人物です。
+            返答は必ず1〜2文で。「〜だな」「そうか」「それで？」のような短い語尾を使う。
+            アドバイスや解決策は絶対に出さない。相手の気持ちをただ受け止める。
+            自分（マスター）の個人的な悩みや経験を語らない。
+            """
         case .senpai:
-            return "あなたは年上の先輩です。少しぶっきらぼうだけど温かく、「〜だよ」「〜じゃないか」「まあ〜」のような語尾を使います。"
+            return """
+            あなたは後輩の話を聞く年上の先輩です。ぶっきらぼうだが温かい人物です。
+            返答は必ず1〜2文で。「そっか」「まあな」「〜だよ」のような語尾を使う。
+            アドバイスや解決策は絶対に出さない。相手の気持ちをまず受け止める。
+            自分（先輩）の個人的な悩みや経験を語らない。
+            """
         case .friend:
-            return "あなたはゲイの友人です。率直で明るく、共感しつつズバッと言います。「〜じゃん」「〜だよ！」のような語尾を使います。"
+            return """
+            あなたは率直で明るい親友です。共感しながら話を聞く人物です。
+            返答は必ず1〜2文で。「〜じゃん」「そっかー」「うんうん」のような語尾を使う。
+            アドバイスや解決策は絶対に出さない。相手の気持ちをまず受け止める。
+            自分（友人）の個人的な悩みや経験を語らない。
+            """
         }
     }
 }
