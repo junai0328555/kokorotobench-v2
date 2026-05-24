@@ -22,28 +22,18 @@ struct SensorPromptBuilder {
     }
 
     private static func buildSystemPrompt(character: CharacterType, pattern: SensorPattern) -> String {
-        var base = """
+        """
         \(characterPersona(character))
 
         ユーザーの話をよく聞き、気持ちに寄り添って応答してください。
         - アドバイスや答えを出さず、まず気持ちを受け止める
         - 詳細を聞く前に決めつけたり評価したりしない
-        - 毎回同じ言葉にならないよう、会話の流れに沿って応答する
+        - 毎回同じ言葉にならないよう、会話の流れに沿って自然に応答する
         - ユーザーのメッセージを先頭で繰り返さない
-        - 短い発話には短く返す。問いかけは必要なときだけ1つ
+        - 同じ問いかけを繰り返さない（ユーザーが答えたら次の話題へ進む）
+        - 短い発話には短く返す。問いかけは1回したら次は別の応答にする
         - 「大丈夫だよ」「そんなことはないよ」「すべき」は使わない
         """
-
-        switch pattern {
-        case .factVsAssumption:
-            base += "\n- ユーザーは他者の内面を推測しているようです。事実と推測を分けて考えられるよう、「実際に〜と言われたの？」「そう感じた出来事は？」などと穏やかに問いかける方向で応答してください。"
-        case .taskOverload:
-            base += "\n- ユーザーは他者の課題を抱え込んでいるようです。「それ、本来は誰がやることだったんだろう」などと、境界線に気づくような問いかけを検討してください。"
-        case .none:
-            break
-        }
-
-        return base
     }
 
     private static func buildUserPrompt(request: SensorPromptRequest) -> String {

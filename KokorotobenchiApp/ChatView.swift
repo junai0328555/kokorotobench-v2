@@ -26,6 +26,7 @@ struct ChatView: View {
     @State private var lastUserQuote = ""
     @State private var lastCharacterQuote = ""
     @State private var fallbackIndex = 0
+    @State private var lastAIResponse = ""
 
     var body: some View {
         ZStack {
@@ -235,6 +236,13 @@ struct ChatView: View {
         do {
             let response = try await session.respond(to: prompts.user)
             let cleaned = postProcess(response.content, userText: userText)
+
+            if isSimilarToLast(cleaned) {
+                appendFallback(pattern: sensorResult.pattern)
+                return
+            }
+            lastAIResponse = cleaned
+
             let hasDeepQ = cleaned.contains("？") || cleaned.contains("?")
             let msg = ChatMessage(sender: .character, text: cleaned, hasDeepQuestion: hasDeepQ)
             state.currentMessages.append(msg)
@@ -248,6 +256,17 @@ struct ChatView: View {
         } catch {
             appendFallback(pattern: sensorResult.pattern)
         }
+    }
+
+    private func isSimilarToLast(_ text: String) -> Bool {
+        guard !lastAIResponse.isEmpty else { return false }
+        let a = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let b = lastAIResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+        if a == b { return true }
+        // 先頭20文字が一致 → 実質同じ応答とみなす
+        let prefixLen = min(20, min(a.count, b.count))
+        if prefixLen >= 10, a.prefix(prefixLen) == b.prefix(prefixLen) { return true }
+        return false
     }
 
     private func postProcess(_ text: String, userText: String) -> String {
